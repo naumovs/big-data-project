@@ -1,8 +1,8 @@
-import org.apache.spark.sql.SparkSession
-import org.apache.hadoop.fs._
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.expressions.Window
 import Util._
+import org.apache.hadoop.fs._
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions._
 
 case class CarsAndBuyers(
                          firstName: String, lastName: String, email: String, gender: String,
@@ -11,7 +11,7 @@ case class CarsAndBuyers(
                        ) // Column "id" skipped
 case class LoadedPartitions (loadedDate: java.sql.Date, dataset: String)
 object DoDataMart {
-  def apply(sourcePath: String, targetPath: String, hiveHostPort: String): Unit = {
+  def apply(sourcePath: String, targetPath: String): Unit = {
     implicit val spark: SparkSession = SparkSession
       .builder()
       .appName("do-data-mart")
@@ -28,7 +28,14 @@ object DoDataMart {
     val exists = fs.exists(new Path(jobUtilDir))
 
     val loadedPartitions = if (exists) {
-      readCSV[LoadedPartitions](jobUtilDir).cache()
+      val lp = readCSV[LoadedPartitions](jobUtilDir)
+      lp
+        .repartition(1)
+        .write.format("com.databricks.spark.csv")
+        .option("header", "true")
+        .mode("Overwrite")
+        .csv(s"${jobUtilDir}_tmp")
+      readCSV[LoadedPartitions](s"${jobUtilDir}_tmp").cache()
     } else {
       spark.emptyDataset[LoadedPartitions].cache()
     }
@@ -70,10 +77,14 @@ object DoDataMart {
       .repartition(1)
       .write.format("com.databricks.spark.csv")
       .option("header", "true")
-      .mode("Append")
+      .mode("Overwrite")
       .csv(jobUtilDir)
 
     loadedPartitions.unpersist()
+
+    //Clean tmp dir
+    val p = new Path(s"${jobUtilDir}_tmp")
+    if (fs.exists(p)) fs.delete(p, true)
 
     println("Successfully saved to file list of loaded partitions.")
   }

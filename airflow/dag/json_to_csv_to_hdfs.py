@@ -1,15 +1,15 @@
-from datetime import datetime, timedelta
-from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
-from airflow.providers.ssh.operators.ssh import SSHOperator
+import csv
+import logging
+import os
+import uuid
 from airflow.hooks.http_hook import HttpHook
 from airflow.hooks.webhdfs_hook import WebHDFSHook
 from airflow.models import Variable
-import logging
-import json
-import os
-import csv
-import uuid
+from airflow.operators.python_operator import PythonOperator
+from airflow.providers.ssh.operators.ssh import SSHOperator
+from datetime import datetime, timedelta
+
+from airflow import DAG
 
 # Define the default arguments for the DAG
 default_args = {
@@ -96,12 +96,7 @@ with DAG('json_to_csv_to_hdfs', default_args=default_args, schedule_interval='0 
                               "--driver-memory 1G "
                               "--executor-memory 1G "
                               "--num-executors 1 "
-                              "--conf spark.jdbc.password={password} "
-                              "/home/projectjars/big-data-project-assembly-0.1.jar /tmp/inc /tmp/dm {hive}"
-                             .format(hive = Variable.get("hive_host_port", default_var=None)
-                                    ,password = Variable.get("hv_password", default_var=None)
-                                    )
-                             )
+                              "/home/projectjars/big-data-project-assembly-0.1.jar /tmp/inc /tmp/dm")
 
     ssh_run_do_datamart = SSHOperator(
         task_id="spark_run_datamart",
