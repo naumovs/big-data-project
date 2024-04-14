@@ -43,16 +43,17 @@ object DoDataMart {
     val carsAndBuyers = spark.read.parquet(sourcePath).to[CarsAndBuyers]
 
     // Cars by country (load only recently added partitions)
-    val windowSpecAgg = Window.partitionBy('loadedDate, 'country)
+    val windowSpecAgg = Window.partitionBy('country)
     println("Running cars by country")
     val carsAndBuyersToExport = carsAndBuyers
       .withColumn("carModelYear_median",
         expr("percentile_approx(carModelYear, 0.5)").over(windowSpecAgg))
       .join(broadcast(loadedPartitions), Seq("loadedDate"),"left_anti")
-      .groupBy('loadedDate, 'country)
+      .groupBy('country)
       .agg(
         countDistinct('carModel).as("carModel_cnt"),
-        max('carModelYear_median).as("carModelYear_median")
+        max('carModelYear_median).as("carModelYear_median"),
+        max('loadedDate).as("loadedDate")
       )
 
     println("The schema of carsAndBuyersToExport:")

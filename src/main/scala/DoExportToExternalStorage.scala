@@ -35,7 +35,7 @@ object DoExportToExternalStorage {
 
     df
       .distinct()
-      .write.mode("append")
+      .write.mode("Overwrite")
       .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
       .option("createTableOptions", s"ENGINE=MergeTree ORDER BY ($targetOrderBy)")
       .jdbc(jdbcUrl, table = targetTableName, ckProperties)
